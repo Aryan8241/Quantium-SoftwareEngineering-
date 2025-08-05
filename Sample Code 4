@@ -1,0 +1,48 @@
+# tests/test_app.py
+
+from app import app
+# Note: The 'dash_duo' fixture is automatically provided by dash[testing].
+# You don't need to import it explicitly.
+
+def test_header_is_present(dash_duo):
+    """
+    Test 1: Verify that the main header is present and has the correct text.
+    """
+    # Start the app in a browser managed by dash_duo
+    dash_duo.start_server(app)
+
+    # Find the H1 element using a CSS selector.
+    # wait_for_element is used to ensure the page has time to load.
+    header = dash_duo.wait_for_element("h1", timeout=4)
+
+    # Assert that the header element is not None and its text is correct
+    assert header is not None
+    assert header.text == "Soul Foods: Pink Morsel Sales Visualiser"
+
+
+def test_visualization_is_present(dash_duo):
+    """
+    Test 2: Verify that the graph visualization is present.
+    """
+    dash_duo.start_server(app)
+
+    # The dcc.Graph component has an ID of 'sales-line-chart'.
+    # We use this ID to find the element.
+    sales_chart = dash_duo.wait_for_element("#sales-line-chart", timeout=4)
+
+    # Assert that the chart element was found
+    assert sales_chart is not None
+
+
+def test_region_picker_is_present(dash_duo):
+    """
+    Test 3: Verify that the region picker radio buttons are present.
+    """
+    dash_duo.start_server(app)
+
+    # The dcc.RadioItems component has an ID of 'region-filter'.
+    # We find the element using this ID.
+    region_picker = dash_duo.wait_for_element("#region-filter", timeout=4)
+
+    # Assert that the region picker element was found
+    assert region_picker is not None
