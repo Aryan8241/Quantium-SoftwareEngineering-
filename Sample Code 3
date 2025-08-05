@@ -1,0 +1,133 @@
+import pandas as pd
+import plotly.express as px
+from dash import Dash, dcc, html
+from dash.dependencies import Input, Output
+
+# --- 1. Load and Prepare the Data ---
+try:
+    df = pd.read_csv('formatted_sales_data.csv')
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.sort_values('Date', inplace=True)
+except FileNotFoundError:
+    print("Error: 'formatted_sales_data.csv' not found.")
+    print("Please run 'process_data.py' first to generate the data file.")
+    df = pd.DataFrame(columns=['Date', 'Sales', 'Region'])
+
+# --- 2. Initialize the Dash App ---
+app = Dash(__name__)
+server = app.server
+
+# --- 3. Define the App Layout with Radio Buttons and Styling ---
+app.layout = html.Div(
+    style={
+        'fontFamily': 'Arial, sans-serif',
+        'backgroundColor': '#f4f4f4',
+        'padding': '20px'
+    },
+    children=[
+        # Header
+        html.H1(
+            children='Soul Foods: Pink Morsel Sales Visualiser',
+            style={
+                'textAlign': 'center',
+                'color': '#336699',
+                'marginBottom': '20px'
+            }
+        ),
+
+        # Sub-header / description
+        html.Div(
+            children='Explore Pink Morsel sales trends by region.',
+            style={
+                'textAlign': 'center',
+                'color': '#666',
+                'marginBottom': '30px'
+            }
+        ),
+
+        # Region filter radio buttons
+        html.Div(
+            style={
+                'textAlign': 'center',
+                'marginBottom': '20px'
+            },
+            children=[
+                html.Label('Select Region:', style={'fontWeight': 'bold', 'marginRight': '10px'}),
+                dcc.RadioItems(
+                    id='region-filter',
+                    options=[
+                        {'label': 'All', 'value': 'all'},
+                        {'label': 'North', 'value': 'North'},
+                        {'label': 'East', 'value': 'East'},
+                        {'label': 'South', 'value': 'South'},
+                        {'label': 'West', 'value': 'West'}
+                    ],
+                    value='all',  # Default selection
+                    inline=True,
+                    style={'marginLeft': '10px'}
+                )
+            ]
+        ),
+
+        # Graph component
+        dcc.Graph(
+            id='sales-line-chart'
+        ),
+
+        # Footer/Note
+        html.Div(
+            children='Note: Sales data includes a 30-day rolling average for trend analysis. The red dashed line indicates the price increase on January 15, 2021.',
+            style={'textAlign': 'center', 'marginTop': '30px', 'fontSize': '0.9em', 'color': '#777'}
+        )
+    ]
+)
+
+# --- 4. Define Callback to Update Chart Based on Region ---
+@app.callback(
+    Output('sales-line-chart', 'figure'),
+    Input('region-filter', 'value')
+)
+def update_chart(selected_region):
+    if selected_region == 'all':
+        filtered_df = df.copy()
+        title = 'Pink Morsel Sales Analysis (All Regions - 30-Day Rolling Average)'
+    else:
+        filtered_df = df[(df['Region'] == selected_region)].copy()
+        title = f'Pink Morsel Sales in {selected_region} (30-Day Rolling Average)'
+
+    # Calculate 30-day rolling average for the filtered data
+    filtered_df['Sales_30_Day_Avg'] = filtered_df['Sales'].rolling(window=30).mean()
+
+    # Price increase date
+    price_increase_date = pd.to_datetime('2021-01-15')
+
+    fig = px.line(
+        filtered_df,
+        x='Date',
+        y='Sales_30_Day_Avg',
+        title=title,
+        labels={'Sales_30_Day_Avg': 'Sales (30-Day Average)'}
+    )
+
+    fig.update_layout(
+        xaxis_title='Date',
+        yaxis_title='Sales (30-Day Average)',
+        font=dict(family="Arial, sans-serif", size=12, color="#333"),
+        plot_bgcolor='rgba(255,255,255,0.9)',
+        paper_bgcolor='#f4f4f4'
+    )
+
+    fig.add_vline(
+        x=price_increase_date,
+        line_width=2,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="Price Increase",
+        annotation_position="top right"
+    )
+
+    return fig
+
+# --- 5. Run the App ---
+if __name__ == '__main__':
+    app.run_server(debug=True)
