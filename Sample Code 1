@@ -1,0 +1,82 @@
+# process_data.py
+
+import pandas as pd
+import os
+
+def process_sales_data():
+    """
+    Reads raw sales data, processes it according to business rules,
+    and saves the formatted data to a new CSV file.
+    """
+    print("Starting data processing...")
+
+    # Define file paths
+    data_folder = 'data'
+    output_folder = '.' # Save in the root project directory
+    input_files = [
+        'sales_data_2020.csv',
+        'sales_data_2021.csv',
+        'sales_data_2022.csv'
+    ]
+    output_file = 'formatted_sales_data.csv'
+
+    # --- 1. Combine all CSV files ---
+    all_dataframes = []
+    for file in input_files:
+        file_path = os.path.join(data_folder, file)
+        try:
+            df = pd.read_csv(file_path)
+            all_dataframes.append(df)
+            print(f"Successfully loaded {file_path}")
+        except FileNotFoundError:
+            print(f"Warning: File not found at {file_path}. Skipping.")
+            continue
+    
+    if not all_dataframes:
+        print("No data files found. Exiting.")
+        return
+
+    # Concatenate all dataframes into a single one
+    combined_df = pd.concat(all_dataframes, ignore_index=True)
+    print("All data files have been combined.")
+
+    # --- 2. Filter for "Pink Morsel" ---
+    # We use .copy() to avoid a SettingWithCopyWarning from pandas
+    pink_morsel_df = combined_df[combined_df['product'] == 'Pink Morsel'].copy()
+    print(f"Filtered for 'Pink Morsel'. Kept {len(pink_morsel_df)} out of {len(combined_df)} rows.")
+
+    # --- 3. Calculate the "sales" field ---
+    # Ensure 'quantity' and 'price' are numeric, coercing errors to NaN
+    pink_morsel_df['quantity'] = pd.to_numeric(pink_morsel_df['quantity'], errors='coerce')
+    
+    # Prices might be strings like '$5.25'. We need to remove '$' and convert to numeric.
+    pink_morsel_df['price'] = pink_morsel_df['price'].replace({'\$': ''}, regex=True)
+    pink_morsel_df['price'] = pd.to_numeric(pink_morsel_df['price'], errors='coerce')
+
+    # Drop any rows where conversion failed
+    pink_morsel_df.dropna(subset=['quantity', 'price'], inplace=True)
+    
+    # Now, calculate sales
+    pink_morsel_df['Sales'] = pink_morsel_df['quantity'] * pink_morsel_df['price']
+    print("Calculated the 'Sales' column.")
+
+    # --- 4. Select and format the final fields ---
+    # The required fields are 'Sales', 'date', and 'region'
+    # We'll rename them to match the desired output capitalization
+    final_df = pink_morsel_df[['Sales', 'date', 'region']]
+    final_df = final_df.rename(columns={'date': 'Date', 'region': 'Region'})
+    print("Selected and formatted the final columns.")
+
+    # --- 5. Save the output file ---
+    output_path = os.path.join(output_folder, output_file)
+    # index=False prevents pandas from writing the dataframe index as a column
+    final_df.to_csv(output_path, index=False)
+    
+    print("-" * 30)
+    print(f"Success! Formatted data saved to: {output_path}")
+    print("-" * 30)
+
+
+if __name__ == '__main__':
+    # This block ensures the function runs only when the script is executed directly
+    process_sales_data()
