@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# A script to run the test suite for the Dash application.
+# This is intended to be used in a CI/CD environment.
+
+# The 'set -e' command ensures that the script will exit immediately if any command fails.
+# This is crucial for CI environments because it prevents the script from continuing
+# after a failure, which could lead to unexpected behavior (like deploying a broken app).
+set -e
+
+echo "--- Starting Test Execution Script ---"
+
+# --- 1. Activate the project virtual environment ---
+# First, check if the virtual environment activation script exists.
+VENV_ACTIVATE="venv/bin/activate"
+if [ -f "$VENV_ACTIVATE" ]; then
+    echo "Activating Python virtual environment..."
+    # The 'source' command executes the script in the current shell,
+    # which loads the virtual environment's settings (PATH, etc.).
+    source "$VENV_ACTIVATE"
+else
+    # If the venv doesn't exist, print an error and exit with a failure code (1).
+    echo "Error: Virtual environment not found at $VENV_ACTIVATE"
+    echo "Please run the setup steps to create the virtual environment."
+    exit 1
+fi
+
+# --- 2. Execute the test suite ---
+# With the virtual environment active, 'pytest' will be available.
+# pytest automatically discovers and runs the tests in the 'tests/' directory.
+# If any test fails, pytest will exit with a non-zero status code,
+# which will cause our script to exit immediately because of 'set -e'.
+echo "Running pytest suite..."
+pytest
+
+# --- 3. Return exit code 0 if all tests passed ---
+# If the script reaches this point, it means all previous commands, including 'pytest',
+# have completed successfully. We explicitly exit with 0 to signal success.
+echo "--------------------------------------"
+echo "All tests passed successfully! ✅"
+echo "--------------------------------------"
+exit 0
